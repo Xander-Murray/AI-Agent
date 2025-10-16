@@ -1,16 +1,30 @@
+import math
+
 class Calculator:
     def __init__(self):
         self.operators = {
             "+": lambda a, b: a + b,
             "-": lambda a, b: a - b,
             "*": lambda a, b: a * b,
-            "/": lambda a, b: a / b,
+            "/": lambda a, b: a / b if b != 0 else self._raise_value_error("Division by zero"),
+            "^": lambda a, b: a ** b,  # Exponentiation
+            "sqrt": lambda a: math.sqrt(a) if a >= 0 else self._raise_value_error("Square root of negative number"), # Square root
+            "%": lambda a, b: a % b if b != 0 else self._raise_value_error("Division by zero (modulo)"),
+            "log": lambda a: math.log(abs(a)),
         }
         self.precedence = {
             "+": 1,
             "-": 1,
             "*": 2,
             "/": 2,
+            "^": 3, # higher precedence for exponentiation
+            "sqrt": 3,
+            "%": 2,
+            "log": 3,
+        }
+
+        self.constants = {
+            "pi": math.pi
         }
 
     def evaluate(self, expression):
@@ -32,7 +46,7 @@ class Calculator:
                 if operators:
                     operators.pop()  # Remove the '('
                 else:
-                    raise ValueError("Unmatched ')'")
+                    self._raise_value_error("Unmatched ')'")
             elif token in self.operators:
                 while (
                     operators
@@ -44,17 +58,21 @@ class Calculator:
                 operators.append(token)
             else:
                 try:
-                    values.append(float(token))
+                    if token in self.constants:
+                        values.append(self.constants[token])
+                    else:
+                        num = float(token)
+                        values.append(num)
                 except ValueError:
-                    raise ValueError(f"invalid token: {token}")
+                    self._raise_value_error(f"invalid token: {token}")
 
         while operators:
             if operators[-1] == '(':  
-                raise ValueError("Unmatched '('")
+                self._raise_value_error("Unmatched '('")
             self._apply_operator(operators, values)
 
         if len(values) != 1:
-            raise ValueError("invalid expression")
+            self._raise_value_error("invalid expression")
 
         return values[0]
 
@@ -63,9 +81,17 @@ class Calculator:
             return
 
         operator = operators.pop()
-        if len(values) < 2:
-            raise ValueError(f"not enough operands for operator {operator}")
+        if operator == "sqrt" or operator == "log":
+            if not values:
+                self._raise_value_error(f"not enough operands for operator {operator}")
+            a = values.pop()
+            values.append(self.operators[operator](a))
+        else:
+            if len(values) < 2:
+                self._raise_value_error(f"not enough operands for operator {operator}")
+            b = values.pop()
+            a = values.pop()
+            values.append(self.operators[operator](a, b))
 
-        b = values.pop()
-        a = values.pop()
-        values.append(self.operators[operator](a, b))
+    def _raise_value_error(self, message):
+        raise ValueError(message)
